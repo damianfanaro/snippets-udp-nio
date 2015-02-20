@@ -120,6 +120,7 @@ public class MulticastReceiver implements Runnable {
     }
 
     public static class Builder {
+
         private List<MulticastEndpoint> endpoints;
 
         private Builder() {
@@ -128,7 +129,6 @@ public class MulticastReceiver implements Runnable {
 
         public Builder receivesFrom(String groupAddress, int port, String nic, Consumer<ByteBuffer> consumer) {
             endpoints.add(new MulticastEndpoint(nic, groupAddress, port, consumer));
-
             return this;
         }
 
