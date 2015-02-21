@@ -65,14 +65,11 @@ public class MulticastReceiverTest {
 
     @Test
     public void receiverShouldInvokeConsumer() throws InterruptedException, IOException {
-        when(datagramChannel.receive(any(ByteBuffer.class))).thenAnswer(new Answer<SocketAddress>() {
-            @Override
-            public SocketAddress answer(InvocationOnMock invocation) throws Throwable {
-                ByteBuffer buffer = (ByteBuffer) invocation.getArguments()[0];
-                buffer.putInt(MESSAGE.length());
-                buffer.put(MESSAGE.getBytes());
-                return null;
-            }
+        when(datagramChannel.receive(any(ByteBuffer.class))).thenAnswer(invocation -> {
+            ByteBuffer buffer = (ByteBuffer) invocation.getArguments()[0];
+            buffer.putInt(MESSAGE.length());
+            buffer.put(MESSAGE.getBytes());
+            return null;
         });
         Thread thread = new Thread(receiver);
         thread.start();

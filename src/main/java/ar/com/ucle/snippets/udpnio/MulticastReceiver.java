@@ -16,7 +16,20 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public class MulticastReceiver implements Runnable {
+
+    private final List<MulticastEndpoint> endpoints;
+    private volatile boolean active;
+
+    private MulticastReceiver(List<MulticastEndpoint> endpoints) {
+        this.endpoints = endpoints;
+        active = true;
+    }
+
+    /**
+     * MULTICAST ENDPOINT 
+     */
     static class MulticastEndpoint {
+        
         private String nic;
         private String address;
         private int port;
@@ -30,7 +43,11 @@ public class MulticastReceiver implements Runnable {
         }
     }
 
+    /**
+     * CHANNEL SETTINGS 
+     */
     static class ChannelSettings {
+        
         private DatagramChannel channel;
         private Consumer<ByteBuffer> consumer;
 
@@ -48,12 +65,25 @@ public class MulticastReceiver implements Runnable {
         }
     }
 
-    private final List<MulticastEndpoint> endpoints;
-    private volatile boolean active;
+    /**
+     * MULTICAST RECEIVER BUILDER
+     */
+    public static class Builder {
 
-    private MulticastReceiver(List<MulticastEndpoint> endpoints) {
-        this.endpoints = endpoints;
-        active = true;
+        private List<MulticastEndpoint> endpoints;
+
+        private Builder() {
+            endpoints = new ArrayList<>(16);
+        }
+
+        public Builder receivesFrom(String groupAddress, int port, String nic, Consumer<ByteBuffer> consumer) {
+            endpoints.add(new MulticastEndpoint(nic, groupAddress, port, consumer));
+            return this;
+        }
+
+        public MulticastReceiver build() {
+            return new MulticastReceiver(endpoints);
+        }
     }
 
     public static Builder builder() {
@@ -66,13 +96,17 @@ public class MulticastReceiver implements Runnable {
 
     @Override
     public void run() {
+        
         try {
+        
             Selector selector = createSelector();
+            
             for (MulticastEndpoint endpoint : endpoints) {
                 createChannel(selector, endpoint);
             }
 
             ByteBuffer buffer = ByteBuffer.allocate(1024);
+            
             while (active) {
                 Iterator<SelectionKey> keys = getSelectionKeys(selector);
                 while (keys.hasNext()) {
@@ -84,8 +118,8 @@ public class MulticastReceiver implements Runnable {
                     settings.getConsumer().accept(buffer);
                     keys.remove();
                 }
-
             }
+        
         } catch (IOException e) {
             throw new IllegalStateException("Error while reading sockets", e);
         }
@@ -104,36 +138,19 @@ public class MulticastReceiver implements Runnable {
     }
 
     ChannelSettings createChannel(Selector selector, MulticastEndpoint endpoint) throws IOException {
-        NetworkInterface interf = NetworkInterface.getByName(endpoint.nic);
+        NetworkInterface networkInterface = NetworkInterface.getByName(endpoint.nic);
         InetAddress group = InetAddress.getByName(endpoint.address);
 
         DatagramChannel dc = DatagramChannel.open(StandardProtocolFamily.INET)
                 .setOption(StandardSocketOptions.SO_REUSEADDR, true)
                 .bind(new InetSocketAddress(endpoint.port))
-                .setOption(StandardSocketOptions.IP_MULTICAST_IF, interf);
+                .setOption(StandardSocketOptions.IP_MULTICAST_IF, networkInterface);
+        
         dc.configureBlocking(false);
-
-        dc.join(group, interf);
+        dc.join(group, networkInterface);
         ChannelSettings settings = new ChannelSettings(dc, endpoint.consumer);
         dc.register(selector, SelectionKey.OP_READ, settings);
+        
         return settings;
-    }
-
-    public static class Builder {
-
-        private List<MulticastEndpoint> endpoints;
-
-        private Builder() {
-            endpoints = new ArrayList<>(16);
-        }
-
-        public Builder receivesFrom(String groupAddress, int port, String nic, Consumer<ByteBuffer> consumer) {
-            endpoints.add(new MulticastEndpoint(nic, groupAddress, port, consumer));
-            return this;
-        }
-
-        public MulticastReceiver build() {
-            return new MulticastReceiver(endpoints);
-        }
     }
 }
