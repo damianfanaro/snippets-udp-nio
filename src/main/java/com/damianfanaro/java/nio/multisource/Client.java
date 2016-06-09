@@ -1,4 +1,4 @@
-package ar.com.ucle.snippets.udpnio;
+package com.damianfanaro.java.nio.multisource;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -15,54 +15,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class MulticastReceiver implements Runnable {
+public class Client implements Runnable {
 
     private final List<MulticastEndpoint> endpoints;
     private volatile boolean active;
 
-    private MulticastReceiver(List<MulticastEndpoint> endpoints) {
+    private Client(List<MulticastEndpoint> endpoints) {
         this.endpoints = endpoints;
         active = true;
-    }
-
-    /**
-     * MULTICAST ENDPOINT 
-     */
-    static class MulticastEndpoint {
-        
-        private String nic;
-        private String address;
-        private int port;
-        Consumer<ByteBuffer> consumer;
-
-        MulticastEndpoint(String nic, String address, int port, Consumer<ByteBuffer> consumer) {
-            this.nic = nic;
-            this.address = address;
-            this.port = port;
-            this.consumer = consumer;
-        }
-    }
-
-    /**
-     * CHANNEL SETTINGS 
-     */
-    static class ChannelSettings {
-        
-        private DatagramChannel channel;
-        private Consumer<ByteBuffer> consumer;
-
-        ChannelSettings(DatagramChannel channel, Consumer<ByteBuffer> consumer) {
-            this.channel = channel;
-            this.consumer = consumer;
-        }
-
-        public Consumer<ByteBuffer> getConsumer() {
-            return consumer;
-        }
-
-        public DatagramChannel getChannel() {
-            return channel;
-        }
     }
 
     /**
@@ -81,8 +41,8 @@ public class MulticastReceiver implements Runnable {
             return this;
         }
 
-        public MulticastReceiver build() {
-            return new MulticastReceiver(endpoints);
+        public Client build() {
+            return new Client(endpoints);
         }
     }
 
@@ -96,17 +56,12 @@ public class MulticastReceiver implements Runnable {
 
     @Override
     public void run() {
-        
         try {
-        
             Selector selector = createSelector();
-            
             for (MulticastEndpoint endpoint : endpoints) {
                 createChannel(selector, endpoint);
             }
-
             ByteBuffer buffer = ByteBuffer.allocate(1024);
-            
             while (active) {
                 Iterator<SelectionKey> keys = getSelectionKeys(selector);
                 while (keys.hasNext()) {
@@ -119,13 +74,12 @@ public class MulticastReceiver implements Runnable {
                     keys.remove();
                 }
             }
-        
         } catch (IOException e) {
             throw new IllegalStateException("Error while reading sockets", e);
         }
     }
 
-    Iterator<SelectionKey> getSelectionKeys(Selector selector) throws IOException {
+    public Iterator<SelectionKey> getSelectionKeys(Selector selector) throws IOException {
         int ready = selector.select();
         while (ready == 0) {
             ready = selector.select();
@@ -133,22 +87,22 @@ public class MulticastReceiver implements Runnable {
         return selector.selectedKeys().iterator();
     }
 
-    Selector createSelector() throws IOException {
+    public Selector createSelector() throws IOException {
         return Selector.open();
     }
 
-    ChannelSettings createChannel(Selector selector, MulticastEndpoint endpoint) throws IOException {
-        NetworkInterface networkInterface = NetworkInterface.getByName(endpoint.nic);
-        InetAddress group = InetAddress.getByName(endpoint.address);
+    public ChannelSettings createChannel(Selector selector, MulticastEndpoint endpoint) throws IOException {
+        NetworkInterface networkInterface = NetworkInterface.getByName(endpoint.getNic());
+        InetAddress group = InetAddress.getByName(endpoint.getAddress());
 
         DatagramChannel dc = DatagramChannel.open(StandardProtocolFamily.INET)
                 .setOption(StandardSocketOptions.SO_REUSEADDR, true)
-                .bind(new InetSocketAddress(endpoint.port))
+                .bind(new InetSocketAddress(endpoint.getPort()))
                 .setOption(StandardSocketOptions.IP_MULTICAST_IF, networkInterface);
         
         dc.configureBlocking(false);
         dc.join(group, networkInterface);
-        ChannelSettings settings = new ChannelSettings(dc, endpoint.consumer);
+        ChannelSettings settings = new ChannelSettings(dc, endpoint.getConsumer());
         dc.register(selector, SelectionKey.OP_READ, settings);
         
         return settings;

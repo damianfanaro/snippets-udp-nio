@@ -1,17 +1,12 @@
-package ar.com.ucle.snippets.udpnio;
+package com.damianfanaro.java.nio.multisource;
 
 import java.net.NetworkInterface;
 import java.util.Enumeration;
 
-public class ReceiverInit {
+public class ClientMain {
 
     public static void main(String [] args) {
-
         try {
-
-            /**
-             * Network interfaces listing
-             */
             Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
             while(networkInterfaces.hasMoreElements()) {
                 NetworkInterface anInterface = networkInterfaces.nextElement();
@@ -19,21 +14,15 @@ public class ReceiverInit {
                     System.out.println("name=" + anInterface.getName() + " display=" + anInterface.getDisplayName() + " multicast=" + anInterface.supportsMulticast());
                 }
             }
-
-            /**
-             * Multicast receiver initialization
-             */
-            MulticastReceiver receiver = MulticastReceiver.builder()
-                    .receivesFrom(args[0], Integer.valueOf(args[1]), "lo", (buffer) -> System.out.println("winnie"))
-                    .receivesFrom(args[2], Integer.valueOf(args[3]), "lo", (buffer) -> System.out.println("pooh!"))
+            Client receiver = Client.builder()
+                    .receivesFrom(args[0], Integer.valueOf(args[1]), "enp3s0", (buffer) -> System.out.println(new String(buffer.array(), 0, buffer.position())))
+                    .receivesFrom(args[2], Integer.valueOf(args[3]), "enp3s0", (buffer) -> System.out.println(new String(buffer.array(), 0, buffer.position())))
                     .build();
-
             new Thread(receiver).start();
-
-            System.out.println("Server initialized!");
-
+            System.out.println("server initialized");
         } catch (Exception e) {
             System.out.println("Invalid arguments. Try [226.1.1.1, 4321, 224.1.1.1, 4322]");
         }
     }
+
 }
