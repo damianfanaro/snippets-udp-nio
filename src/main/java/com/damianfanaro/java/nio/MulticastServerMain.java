@@ -9,7 +9,7 @@ public class MulticastServerMain {
 
     public static void main(String [] args) {
         try {
-            MulticastServer multicastServer = new MulticastServer(args[0], Integer.valueOf(args[1]));
+            MulticastServer multicastServer = new MulticastServer(args[0], Integer.valueOf(args[1]), args[2]);
             new Thread(multicastServer).start();
 
         } catch (Exception e) {

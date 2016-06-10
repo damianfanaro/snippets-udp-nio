@@ -92,19 +92,17 @@ public class Client implements Runnable {
     }
 
     public ChannelSettings createChannel(Selector selector, MulticastEndpoint endpoint) throws IOException {
-        NetworkInterface networkInterface = NetworkInterface.getByName(endpoint.getNic());
+        NetworkInterface nic = NetworkInterface.getByName(endpoint.getNic());
         InetAddress group = InetAddress.getByName(endpoint.getAddress());
-
         DatagramChannel dc = DatagramChannel.open(StandardProtocolFamily.INET)
                 .setOption(StandardSocketOptions.SO_REUSEADDR, true)
                 .bind(new InetSocketAddress(endpoint.getPort()))
-                .setOption(StandardSocketOptions.IP_MULTICAST_IF, networkInterface);
-        
+                .setOption(StandardSocketOptions.IP_MULTICAST_IF, nic);
         dc.configureBlocking(false);
-        dc.join(group, networkInterface);
+        dc.join(group, nic);
         ChannelSettings settings = new ChannelSettings(dc, endpoint.getConsumer());
         dc.register(selector, SelectionKey.OP_READ, settings);
-        
         return settings;
     }
+
 }

@@ -15,8 +15,8 @@ public class ClientMain {
                 }
             }
             Client receiver = Client.builder()
-                    .receivesFrom(args[0], Integer.valueOf(args[1]), "enp3s0", (buffer) -> System.out.println(new String(buffer.array(), 0, buffer.position())))
-                    .receivesFrom(args[2], Integer.valueOf(args[3]), "enp3s0", (buffer) -> System.out.println(new String(buffer.array(), 0, buffer.position())))
+                    .receivesFrom(args[0], Integer.valueOf(args[1]), "enp3s0", (buffer) -> System.out.println(new String(buffer.array(), 0, buffer.limit())))
+                    .receivesFrom(args[2], Integer.valueOf(args[3]), "enp3s0", (buffer) -> System.out.println(new String(buffer.array(), 0, buffer.limit())))
                     .build();
             new Thread(receiver).start();
             System.out.println("server initialized");
